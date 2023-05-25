@@ -1,0 +1,84 @@
+# TODO: statefulset please!
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bacalhau.fullname" . }}-compute
+  labels:
+    {{- include "bacalhau.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.compute.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bacalhau.selectorLabels.compute" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "bacalhau.selectorLabels.compute" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bacalhau.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - serve
+          - --node-type
+          - compute
+          - --private-internal-ipfs
+          # TODO: cannot seem to find these anywhere on the system, it's just stdout.
+          - --peer
+          - /ip4/10.0.1.48/tcp/1235/p2p/QmSjeSLvWcdqd7zYtE8Mtv4pRd2uGZ2vFRxTsw8R9jweQ4
+          - --ipfs-swarm-addr
+          - /ip4/10.0.1.48/tcp/34097/p2p/QmVvZCWgSFKhCZie5jQdJdPfKJZKrNJwGyrX9a5a4LiuWa
+          env:
+          - name: DOCKER_HOST
+            value: tcp://127.0.0.1:2375
+          ports:
+            - name: api
+              containerPort: 1234
+              protocol: TCP
+            - name: swarm
+              containerPort: 1235
+              protocol: TCP
+          volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+          resources:
+            {{- toYaml .Values.compute.resources | nindent 12 }}
+        - name: docker
+          image: docker:19.03.13-dind
+          env:
+          - name: DOCKER_TLS_CERTDIR
+            value: ""
+          securityContext:
+            privileged: true
+          volumeMounts:
+          - name: tmp
+            mountPath: /tmp
+      {{- with .Values.compute.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.compute.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.compute.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: tmp
+        emptyDir: {}

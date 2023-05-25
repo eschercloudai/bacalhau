@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bacalhau.fullname" . }}-requester
+  labels:
+    {{- include "bacalhau.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.requester.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bacalhau.selectorLabels.requester" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "bacalhau.selectorLabels.requester" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "bacalhau.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+          - serve
+          - --node-type
+          - requester
+          - --private-internal-ipfs
+          ports:
+            - name: api
+              containerPort: 1234
+              protocol: TCP
+            - name: swarm
+              containerPort: 1235
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.requester.resources | nindent 12 }}
+      {{- with .Values.requester.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.requester.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.requester.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

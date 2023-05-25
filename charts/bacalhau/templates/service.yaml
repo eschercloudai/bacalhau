@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  # TODO: this cannot be "bacalhau" as it'll end up with BACALHAU_PORT in the 
+  # environment, and this is hardcoded in the binary.
+  name: {{ include "bacalhau.fullname" . }}-service
+  labels:
+    {{- include "bacalhau.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.apiPort }}
+      targetPort: 1234
+      protocol: TCP
+      name: api
+  selector:
+    {{- include "bacalhau.selectorLabels.requester" . | nindent 4 }}
