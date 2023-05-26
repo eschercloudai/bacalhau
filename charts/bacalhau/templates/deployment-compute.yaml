@@ -57,6 +57,9 @@ spec:
             mountPath: /tmp
           resources:
             {{- toYaml .Values.compute.resources | nindent 12 }}
+        # TODO: this doesn't work due to cgroups not being available
+        # It should really have a "Kubernetes Job" engine rather than
+        # rely on docker.  WASM could work I guess...
         - name: docker
           image: docker:19.03.13-dind
           env:
